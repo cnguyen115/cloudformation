@@ -91,7 +91,6 @@ Metadata:
         default: "Subnet ID"
       KeyName:
         default: "Key Name"
-
       GroupName:
         default: "Group Name"
       GroupDescription:
@@ -139,9 +138,9 @@ Resources:
       InstanceType: !Ref "InstanceType"
       KeyName: !Ref "KeyName"
       ImageId: !Ref "AmiId"
-      SecurityGroups: !Ref "SecurityGroup"
+      SecurityGroupIds:
+        - !Ref SecurityGroup
       SubnetId: !Ref "SubnetId"
       Tags:
-        -
-          Key: "Name"
+        - Key: "Name"
           Value: !Ref "InstanceName"
