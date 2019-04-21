@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  # EC2
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t3.micro
+  AmiId:
+    Type: String
+    Default: ami-005bdb005fb00e791
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+  InstanceName:
+    Type: String
+    Default: cfm
+
+  # Security Group
+  GroupName:
+    Type: String
+  GroupDescription:
+    Type: String
+  CidrIpEgress:
+    Type: String
+    Default: "0.0.0.0/0"
+  FromPortEgress:
+    Type: String
+  IpProtocolEgress:
+    Type: String
+    Default: "-1"
+  ToPortEgress:
+    Type: String
+  CidrIpIngress:
+    Type: String
+    Default: "0.0.0.0/0"
+  FromPortIngress:
+    Type: String
+    Default: "22"
+  IpProtocolIngress:
+    Type: String
+    Default: "tcp"
+  ToPortIngress:
+    Type: Number
+    Default: "22"
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "EC2"
+        Parameters:
+          - "AmiId"
+          - "InstanceType"
+          - "InstanceName"
+          - "AvailabilityZone"
+          - "SubnetId"
+          - "KeyName"
+          
+      - Label: 
+          default: "Security Group"
+        Parameters:
+          - "GroupName"
+          - "GroupDescription"
+          - "VpcId"
+          - "IpProtocolIngress"
+          - "CidrIpIngress"
+          - "FromPortIngress"
+          - "ToPortIngress"
+          - "IpProtocolEgress"
+          - "CidrIpEgress"
+          - "FromPortEgress"
+          - "ToPortEgress"
+
+    ParameterLabels:
+      AmiId:
+        default: "Ami ID"
+      InstanceType:
+        default: "Instance Type"
+      InstanceName:
+        default: "Instance Name"
+      AvailabilityZone:
+        default: "Availability Zone"
+      SubnetId:
+        default: "Subnet ID"
+      KeyName:
+        default: "Key Name"
+
+      GroupName:
+        default: "Group Name"
+      GroupDescription:
+        default: "Group Description"
+      VpcId:
+        default: "Vpc ID"
+      IpProtocolIngress:
+        default: "Ip Protocol (Ingress)"
+      CidrIpIngress:
+        default: "CIDR Ip (Ingress)"
+      FromPortIngress:
+        default: "From Port (Ingress)"
+      ToPortIngress:
+        default: "To Port (Ingress)"
+      IpProtocolEgress:
+        default: "Ip Protocol (Egress)"
+      CidrIpEgress:
+        default: "CIDR Ip (Egress)"
+      FromPortEgress:
+        default: "From Port (Egress)"
+      ToPortEgress:
+        default: "To Port (Egress)"
+
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Ref "GroupName"
+      GroupDescription: !Ref "GroupDescription"
+      SecurityGroupEgress:
+        - CidrIp: !Ref "CidrIpEgress"
+          IpProtocol: !Ref "IpProtocolEgress"
+          FromPort: !Ref "FromPortEgress"
+          ToPort: !Ref "ToPortEgress"
+      SecurityGroupIngress:
+        - CidrIp: !Ref "CidrIpIngress"
+          IpProtocol: !Ref "IpProtocolIngress"
+          FromPort: !Ref "FromPortIngress"
+          ToPort: !Ref "ToPortIngress"
+      VpcId: !Ref "VpcId"
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref "AvailabilityZone"
+      InstanceType: !Ref "InstanceType"
+      KeyName: !Ref "KeyName"
+      ImageId: !Ref "AmiId"
+      SecurityGroups: !Ref "SecurityGroup"
+      SubnetId: !Ref "SubnetId"
+      Tags:
+        -
+          Key: "Name"
+          Value: !Ref "InstanceName"
