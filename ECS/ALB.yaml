@@ -1,24 +1,29 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
-  # EC2
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
-    Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
-  InstanceType:
-    Description: WebServer EC2 instance type
+  # ALB
+  IpAddressType:
     Type: String
-    Default: t3.micro
-  AmiId:
+    Default: ipv4
+    AllowedValues: [ipv4, dualstack]
+    ConstraintDescription: must be ipv4 or dualstack
+  IdleTimeout:
     Type: String
-    Default: ami-005bdb005fb00e791
-  AvailabilityZone:
-    Type: AWS::EC2::AvailabilityZone::Name
-  SubnetId:
-    Type: AWS::EC2::Subnet::Id
-  InstanceName:
+    Default: 60
+  ALBName:
     Type: String
-    Default: cfm
+  Scheme:
+    Type: String
+    Default: internet-facing
+    AllowedValues: [internal, internet-facing]
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  ALBType:
+    Type: String
+    Default: application
+    AllowedValues: [application, network]
+    ConstraintDescription: must be application or network
+  ALBTagName:
+    Type: String
 
   # Security Group
   GroupName:
@@ -54,14 +59,15 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: EC2
+          default: ALB
         Parameters:
-          - AmiId
-          - InstanceType
-          - InstanceName
-          - AvailabilityZone
-          - SubnetId
-          - KeyName
+          - ALBName
+          - ALBType
+          - IpAddressType
+          - Scheme
+          - Subnets
+          - IdleTimeout
+          - ALBTagName
           
       - Label: 
           default: Security Group
@@ -79,18 +85,19 @@ Metadata:
           - ToPortEgress
 
     ParameterLabels:
-      AmiId:
-        default: Ami ID
-      InstanceType:
-        default: Instance Type
-      InstanceName:
-        default: Instance Name
-      AvailabilityZone:
-        default: Availability Zone
-      SubnetId:
+      ALBName:
+        default: ALB Name
+      ALBType:
+        default: ALB Type
+      IpAddressType:
+        default: Ip Address Type
+      Subnets:
         default: Subnet ID
-      KeyName:
-        default: Key Name
+      IdleTimeout:
+        default: Idle Timeout
+      ALBTagName:
+        default: ALB Tag Name
+      
       GroupName:
         default: Group Name
       GroupDescription:
@@ -115,6 +122,20 @@ Metadata:
         default: To Port (Egress)
 
 Resources:
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: !Ref IpAddressType
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: !Ref IdleTimeout
+      Name: !Ref ALBName
+      Scheme: !Ref Scheme
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Type: !Ref ALBType
+
+
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -131,16 +152,3 @@ Resources:
           FromPort: !Ref FromPortIngress
           ToPort: !Ref ToPortIngress
       VpcId: !Ref VpcId
-  EC2Instance:
-    Type: AWS::EC2::Instance
-    Properties:
-      AvailabilityZone: !Ref AvailabilityZone
-      InstanceType: !Ref InstanceType
-      KeyName: !Ref KeyName
-      ImageId: !Ref AmiId
-      SecurityGroupIds:
-        - !Ref SecurityGroup
-      SubnetId: !Ref SubnetId
-      Tags:
-        - Key: Name
-          Value: !Ref InstanceName
