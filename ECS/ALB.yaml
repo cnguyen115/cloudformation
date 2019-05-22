@@ -25,6 +25,61 @@ Parameters:
   ALBTagName:
     Type: String
 
+  # Target Group
+  HealthCheckIntervalSeconds:
+    Type: Number
+    Default: 30
+    MinValue: 5
+    MaxValue: 300
+  HealthCheckPath:
+    Type: String
+    Default: "/"
+  HealthCheckPort:
+    Type: String
+    Default: traffic-port
+    AllowedValues: [traffic-port, override]
+  HealthCheckProtocol:
+    Type: String
+    Default: HTTP
+  HealthCheckTimeoutSeconds:
+    Type: Number
+    Default: 5
+    MinValue: 2
+    MaxValue: 120
+  HealthyThresholdCount:
+    Type: Number
+    Default: 5
+    MinValue: 2
+    MaxValue: 10
+  HttpCodeResponse:
+    Type: String
+    Default: 200
+  TargetGroupName:
+    Type: String
+  TargetGroupPort:
+    Type: Number
+    Default: 80
+    MinValue: 1
+    MaxValue: 65535
+  TargetGroupProtocol:
+    Type: String
+    Default: HTTP
+    AllowedValues: [HTTP, HTTPS, TCP, TLS]
+  TargetGroupDeregDelay:
+    Type: Number
+    Default: 30
+    MinValue: 0
+    MaxValue: 3600
+  TargetGroupTargetType:
+    Type: String
+    Default: ip
+    AllowedValues: [instance, ip, lambda]
+  TargetGroupUnhealthyThresholdCount:
+    Type: Number
+    Default: 2
+    MinValue: 2
+    MaxValue: 10
+
   # Security Group
   GroupName:
     Type: String
@@ -68,7 +123,25 @@ Metadata:
           - Subnets
           - IdleTimeout
           - ALBTagName
-          
+
+      - Label: 
+          default: Target Group
+        Parameters:
+          - TargetGroupName
+          - TargetGroupProtocol
+          - TargetGroupPort
+          - TargetGroupTargetType
+          - TargetGroupDeregDelay
+          - HealthCheckProtocol
+          - HealthCheckPath
+          - HealthCheckPort
+          - HealthyThresholdCount
+          - TargetGroupUnhealthyThresholdCount
+          - HealthCheckTimeoutSeconds
+          - HealthCheckIntervalSeconds
+          - HttpCodeResponse
+
+
       - Label: 
           default: Security Group
         Parameters:
@@ -121,6 +194,33 @@ Metadata:
       ToPortEgress:
         default: To Port (Egress)
 
+      TargetGroupName:
+        default: Target Group Name
+      TargetGroupProtocol:
+        default: Target Group Protocol
+      TargetGroupPort:
+        default: Target Group Port
+      TargetGroupTargetType:
+        default: Target Type
+      TargetGroupDeregDelay:
+        default: Deregistration Delay
+      HealthCheckProtocol:
+        default: Health Check Protocol
+      HealthCheckPath:
+        default: Health Check Path
+      HealthCheckPort:
+        default: Health Check Port
+      HealthyThresholdCount:
+        default: Health Check Healthy Threshold Count
+      TargetGroupUnhealthyThresholdCount:
+        default: Health Check Health Unhealthy Threshold Count
+      HealthCheckTimeoutSeconds:
+        default: Health Check Timeout (Seconds)
+      HealthCheckIntervalSeconds:
+        default: Health Check Interval (Seconds)
+      HttpCodeResponse:
+        default: Health Check Response Success Code
+
 Resources:
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -135,6 +235,52 @@ Resources:
         - !Ref SecurityGroup
       Type: !Ref ALBType
 
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckIntervalSeconds: !Ref HealthCheckIntervalSeconds
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckPort: !Ref HealthCheckPort
+      HealthCheckProtocol: !Ref HealthCheckProtocol
+      HealthCheckTimeoutSeconds: !Ref HealthCheckTimeoutSeconds
+      HealthyThresholdCount: !Ref HealthyThresholdCount
+      Matcher: 
+        HttpCode: !Ref HttpCodeResponse
+      Name: !Ref TargetGroupName
+      Port: !Ref TargetGroupPort
+      Protocol: !Ref TargetGroupProtocol
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: !Ref TargetGroupDeregDelay
+      TargetType: !Ref TargetGroupTargetType
+      UnhealthyThresholdCount: !Ref TargetGroupUnhealthyThresholdCount
+      VpcId: !Ref VpcId
+
+  HTTPlistener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: 443
+            Host: "#{host}"
+            Path: "/#{path}"
+            Query: "#{query}"
+            StatusCode: "HTTP_301"
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+
+  HTTPSlistener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
 
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -152,3 +298,8 @@ Resources:
           FromPort: !Ref FromPortIngress
           ToPort: !Ref ToPortIngress
       VpcId: !Ref VpcId
+
+Outputs:
+  ALBEndPoint:
+    Description: DNS Endpoint of ALB
+    Value: !GetAtt ALB.DNSName
