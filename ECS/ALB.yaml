@@ -80,6 +80,10 @@ Parameters:
     MinValue: 2
     MaxValue: 10
 
+  # Listener
+  SSLCertificate:
+    Type: String
+
   # Security Group
   GroupName:
     Type: String
@@ -124,6 +128,11 @@ Metadata:
           - IdleTimeout
           - ALBTagName
 
+      - Label:
+          default: Listener
+        Parameters:
+          - SSLCertificate
+
       - Label: 
           default: Target Group
         Parameters:
@@ -140,7 +149,6 @@ Metadata:
           - HealthCheckTimeoutSeconds
           - HealthCheckIntervalSeconds
           - HttpCodeResponse
-
 
       - Label: 
           default: Security Group
@@ -170,6 +178,9 @@ Metadata:
         default: Idle Timeout
       ALBTagName:
         default: ALB Tag Name
+
+      SSLCertificate:
+        default: SSL Certificate ARN
       
       GroupName:
         default: Group Name
@@ -233,6 +244,10 @@ Resources:
       Scheme: !Ref Scheme
       SecurityGroups:
         - !Ref SecurityGroup
+      Subnets:
+        - !Select [ 0, !Ref Subnets ]
+        - !Select [ 1, !Ref Subnets ]
+        - !Select [ 2, !Ref Subnets ]
       Type: !Ref ALBType
 
   TargetGroup:
@@ -275,6 +290,8 @@ Resources:
   HTTPSlistener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
+      Certificates:
+        - CertificateArn: !Ref SSLCertificate
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
