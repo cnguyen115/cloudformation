@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  # ASG
+  AutoScalingGroupName:
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+  AvailabilityZones:
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+  DesiredCapacity:
+    Type: Number
+    Default: 1
+  HealthCheckGracePeriod:
+    Type: Number
+    Default: 300
+  HealthCheckType:
+    Type: String
+    Default: EC2
+    AllowedValues: [EC2, ELB]
+  MaxSize:
+    Type: Number
+    Default: 3
+  MinSize:
+    Type: Number
+    Default: 1
+  VPCZoneIdentifier:
+    Type: List<AWS::EC2::Subnet::Id>
+  
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Auto Scaling Group
+        Parameters:
+          - AutoScalingGroupName
+          - AvailabilityZones
+          - VPCZoneIdentifier
+          - DesiredCapacity
+          - MinSize
+          - MaxSize
+          - HealthCheckType
+          - HealthCheckGracePeriod
+
+    ParameterLabels:
+      AutoScalingGroupName: 
+        default: ASG Name
+      AvailabilityZones: 
+        default: Availability Zones
+      VPCZoneIdentifier:
+        default: Subnet IDs (VPCZoneIdentifier)
+      DesiredCapacity: 
+        default: Desired Capacity
+      MinSize: 
+        default: Minimum number of Instances
+      MaxSize: 
+        default: Maximum number of Instances
+      HealthCheckType:
+        default: Health Check Type
+      HealthCheckGracePeriod: 
+        default: Health Check Grace Period
+
+Resources:
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: Boolean
+      BlockDeviceMappings: 
+        - BlockDeviceMapping
+      ClassicLinkVPCId: String
+      ClassicLinkVPCSecurityGroups: 
+        - String
+      EbsOptimized: Boolean
+      IamInstanceProfile: String
+      ImageId: String
+      InstanceId: String
+      InstanceMonitoring: Boolean
+      InstanceType: String
+      KernelId: String
+      KeyName: String
+      LaunchConfigurationName: String
+      PlacementTenancy: String
+      RamDiskId: String
+      SecurityGroups: 
+        - String
+      SpotPrice: String
+      UserData: String
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroupName
+      AvailabilityZones: 
+        - !Ref AvailabilityZones
+      DesiredCapacity: !Ref DesiredCapacity
+      HealthCheckGracePeriod: !Ref HealthCheckGracePeriod
+      HealthCheckType: !Ref HealthCheckType
+      #LaunchConfigurationName: !Ref LaunchConfigurationName
+      MaxSize: !Ref MaxSize
+      MinSize: !Ref MinSize
+      VPCZoneIdentifier: 
+        - !Ref VPCZoneIdentifier
