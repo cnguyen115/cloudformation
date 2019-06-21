@@ -1,12 +1,37 @@
 AWSTemplateFormatVersion: 2010-09-09
 Parameters:
+  # Launch Config
+  AssociatePublicIpAddress:
+    Type: String
+    Default: False
+    AllowedValues: [True, False]
+  IamInstanceProfile:
+    Type: String
+    Default: ecsInstanceRole
+    MinLength: 1
+    MaxLength: 1600
+  ImageId:
+    Type: String
+    Default: ami-00e0090ac21971297
+    MinLength: 1
+    MaxLength: 255
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t3.micro
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+  LaunchConfigurationName:
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: "[\u0020-\uD7FF\uE000-\uFFFD\uD800\uDC00-\uDBFF\uDFFF\r\n\t]*"
+
   # ASG
   AutoScalingGroupName:
     Type: String
     MinLength: 1
     MaxLength: 255
-  AvailabilityZones:
-    Type: List<AWS::EC2::AvailabilityZone::Name>
   DesiredCapacity:
     Type: Number
     Default: 1
@@ -25,15 +50,54 @@ Parameters:
     Default: 1
   VPCZoneIdentifier:
     Type: List<AWS::EC2::Subnet::Id>
-  
+
+  # Security Group
+  GroupName:
+    Type: String
+  GroupDescription:
+    Type: String
+  CidrIpEgress:
+    Type: String
+    Default: 0.0.0.0/0
+  FromPortEgress:
+    Type: String
+  IpProtocolEgress:
+    Type: String
+    Default: -1
+  ToPortEgress:
+    Type: String
+  CidrIpIngress:
+    Type: String
+    Default: 0.0.0.0/0
+  FromPortIngress:
+    Type: String
+    Default: 22
+  IpProtocolIngress:
+    Type: String
+    Default: tcp
+  ToPortIngress:
+    Type: Number
+    Default: 22
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
+          default: Launch Configuration
+        Parameters:
+          - LaunchConfigurationName
+          - AssociatePublicIpAddress
+          - IamInstanceProfile
+          - ImageId
+          - InstanceType
+          - KeyName
+
+      - Label:
           default: Auto Scaling Group
         Parameters:
           - AutoScalingGroupName
-          - AvailabilityZones
           - VPCZoneIdentifier
           - DesiredCapacity
           - MinSize
@@ -41,11 +105,36 @@ Metadata:
           - HealthCheckType
           - HealthCheckGracePeriod
 
+      - Label: 
+          default: Security Group
+        Parameters:
+          - GroupName
+          - GroupDescription
+          - VpcId
+          - IpProtocolIngress
+          - CidrIpIngress
+          - FromPortIngress
+          - ToPortIngress
+          - IpProtocolEgress
+          - CidrIpEgress
+          - FromPortEgress
+          - ToPortEgress
+
     ParameterLabels:
+      LaunchConfigurationName:
+        default: Launch Configuration Name
+      AssociatePublicIpAddress:
+        default: Associate Public Ip Address
+      IamInstanceProfile:
+        default: IAM Instance Profile
+      ImageId:
+        default: Image ID
+      InstanceType:
+        default: Instance Type
+      KeyName:
+        default: Key Name
       AutoScalingGroupName: 
         default: ASG Name
-      AvailabilityZones: 
-        default: Availability Zones
       VPCZoneIdentifier:
         default: Subnet IDs (VPCZoneIdentifier)
       DesiredCapacity: 
@@ -58,38 +147,62 @@ Metadata:
         default: Health Check Type
       HealthCheckGracePeriod: 
         default: Health Check Grace Period
+      GroupName:
+        default: Group Name
+      GroupDescription:
+        default: Group Description
+      VpcId:
+        default: Vpc ID
+      IpProtocolIngress:
+        default: Ip Protocol (Ingress)
+      CidrIpIngress:
+        default: CIDR Ip (Ingress)
+      FromPortIngress:
+        default: From Port (Ingress)
+      ToPortIngress:
+        default: To Port (Ingress)
+      IpProtocolEgress:
+        default: Ip Protocol (Egress)
+      CidrIpEgress:
+        default: CIDR Ip (Egress)
+      FromPortEgress:
+        default: From Port (Egress)
+      ToPortEgress:
+        default: To Port (Egress)
 
 Resources:
   LaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      AssociatePublicIpAddress: Boolean
-      BlockDeviceMappings: 
-        - BlockDeviceMapping
-      ClassicLinkVPCId: String
-      ClassicLinkVPCSecurityGroups: 
-        - String
-      EbsOptimized: Boolean
-      IamInstanceProfile: String
-      ImageId: String
-      InstanceId: String
-      InstanceMonitoring: Boolean
-      InstanceType: String
-      KernelId: String
-      KeyName: String
-      LaunchConfigurationName: String
-      PlacementTenancy: String
-      RamDiskId: String
+      AssociatePublicIpAddress: !Ref AssociatePublicIpAddress
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      LaunchConfigurationName: !Ref LaunchConfigurationName
       SecurityGroups: 
-        - String
-      SpotPrice: String
-      UserData: String
+        - !Ref SecurityGroup
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Ref GroupName
+      GroupDescription: !Ref GroupDescription
+      SecurityGroupEgress:
+        - CidrIp: !Ref CidrIpEgress
+          IpProtocol: !Ref IpProtocolEgress
+          FromPort: !Ref FromPortEgress
+          ToPort: !Ref ToPortEgress
+      SecurityGroupIngress:
+        - CidrIp: !Ref CidrIpIngress
+          IpProtocol: !Ref IpProtocolIngress
+          FromPort: !Ref FromPortIngress
+          ToPort: !Ref ToPortIngress
+      VpcId: !Ref VpcId
   ASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       AutoScalingGroupName: !Ref AutoScalingGroupName
-      AvailabilityZones: 
-        - !Ref AvailabilityZones
+      AvailabilityZones: !GetAZs ''
       DesiredCapacity: !Ref DesiredCapacity
       HealthCheckGracePeriod: !Ref HealthCheckGracePeriod
       HealthCheckType: !Ref HealthCheckType
