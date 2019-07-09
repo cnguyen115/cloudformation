@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  # ASG
+  AutoScalingGroupName:
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+  DesiredCapacity:
+    Type: Number
+    Default: 2
+  HealthCheckGracePeriod:
+    Type: Number
+    Default: 300
+  HealthCheckType:
+    Type: String
+    Default: EC2
+    AllowedValues: [EC2, ELB]
+  LaunchConfigurationName:
+    Type: String
+  MaxSize:
+    Type: Number
+    Default: 2
+  MinSize:
+    Type: Number
+    Default: 2
+  VPCZoneIdentifier:
+    Type: List<AWS::EC2::Subnet::Id>
+  MinInstancesInService:
+    Type: Number
+    Default: 1
+  MaxBatchSize:
+    Type: Number
+    Default: 1
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Launch Configuration
+        Parameters:
+          - LaunchConfigurationName
+          - AssociatePublicIpAddress
+          - IamInstanceProfile
+          - ImageId
+          - InstanceType
+          - KeyName
+
+      - Label:
+          default: Update Policy for Rolling Update
+        Parameters:
+          - MinInstancesInService
+          - MaxBatchSize
+
+    ParameterLabels:
+      LaunchConfigurationName:
+        default: Launch Configuration Name
+      AssociatePublicIpAddress:
+        default: Associate Public Ip Address
+      IamInstanceProfile:
+        default: IAM Instance Profile
+      ImageId:
+        default: Image ID
+      InstanceType:
+        default: Instance Type
+      KeyName:
+        default: Key Name
+      MinInstancesInService:
+        default: Minimum Instances In Service
+      MaxBatchSize:
+        default: Max Batch Size
+
+Resources:
+  ASG:
+    UpdatePolicy: 
+      AutoScalingRollingUpdate: 
+        MinInstancesInService: !Ref MinInstancesInService
+        MaxBatchSize: !Ref MaxBatchSize
+        SuspendProcesses:
+          - HealthCheck
+          - ReplaceUnhealthy
+          - AZRebalance
+          - AlarmNotification
+          - ScheduledActions
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroupName
+      DesiredCapacity: !Ref DesiredCapacity
+      HealthCheckGracePeriod: !Ref HealthCheckGracePeriod
+      HealthCheckType: !Ref HealthCheckType
+      LaunchConfigurationName: !Ref LaunchConfigurationName
+      MaxSize: !Ref MaxSize
+      MinSize: !Ref MinSize
+      VPCZoneIdentifier: 
+        - !Join [ ",", !Ref VPCZoneIdentifier ]
